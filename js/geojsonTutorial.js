@@ -5,7 +5,7 @@ var mymap = L.map('mapid').setView([39.75621, -104.99404], 13);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
 	subdomains: 'abcd',
-	maxZoom: 10
+	maxZoom: 5
 }).addTo(mymap);
 
 function onEachFeature(feature, layer) {
@@ -28,8 +28,7 @@ var geojsonFeature = {
     }
 };
 
-
-L.geoJSON(geojsonFeature).addTo(mymap);
+//L.geoJSON(geojsonFeature).addTo(mymap);
 L.geoJSON(geojsonFeature, {
     onEachFeature: onEachFeature
 }).addTo(mymap);
@@ -102,5 +101,33 @@ var geojsonMarkerOptions = {
 L.geoJSON(geojsonFeature, {
     pointToLayer: function (feature, latlng) {
         return L.circleMarker(latlng, geojsonMarkerOptions);
+    }
+}).addTo(mymap);
+
+var someFeatures = [{
+    "type": "Feature",
+    "properties": {
+        "name": "Coors Field",
+        "show_on_map": false
+    },
+    "geometry": {
+        "type": "Point",
+        "coordinates": [-104.99404, 39.75621]
+    }
+}, {
+    "type": "Feature",
+    "properties": {
+        "name": "Busch Field",
+        "show_on_map": false
+    },
+    "geometry": {
+        "type": "Point",
+        "coordinates": [-104.98404, 39.74621]
+    }
+}];
+
+L.geoJSON(someFeatures, {
+    filter: function(feature, layer) {
+        return feature.properties.show_on_map;
     }
 }).addTo(mymap);
