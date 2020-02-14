@@ -1,5 +1,7 @@
 //Using GeoJson with Leaflet; Matthew Laska; G575 Spring 2020
 
+//L.geojson and L.circleMarker are the only 2 new methods not in quickstartTutorial to define
+
 var mymap = L.map('mapid').setView([39.75621, -104.99404], 13);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -28,7 +30,8 @@ var geojsonFeature = {
     }
 };
 
-//L.geoJSON(geojsonFeature).addTo(mymap);
+//L.geoJSON: creates a geojson layer; also accepts objects in geoJSON format to display on the map
+//onEachFeature: function that gets called once for each feature after it has beeen created and styled but before being added to the geojson layer, good for attaching popups and evenrs
 L.geoJSON(geojsonFeature, {
     onEachFeature: onEachFeature
 }).addTo(mymap);
@@ -47,6 +50,7 @@ var myStyle = {
     "opacity": 0.65
 };
 
+//style: geojson option - object or function defining the path options for styling geojson lines/polygons
 L.geoJSON(myLines, {
     style: myStyle
 }).addTo(mymap);
@@ -98,6 +102,8 @@ var geojsonMarkerOptions = {
     fillOpacity: 0.8
 };
 
+//pointToLayer: function to create geojson point in leaflet layers, created with latlng - returns usually marker or circle
+//L.circleMarker: creates a circle marker given a geog. point, with an optinos options object
 L.geoJSON(geojsonFeature, {
     pointToLayer: function (feature, latlng) {
         return L.circleMarker(latlng, geojsonMarkerOptions);
@@ -126,6 +132,7 @@ var someFeatures = [{
     }
 }];
 
+//filter: function used to decided whether a feature will be included or not, controlling its visibility
 L.geoJSON(someFeatures, {
     filter: function(feature, layer) {
         return feature.properties.show_on_map;
