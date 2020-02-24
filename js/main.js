@@ -3,6 +3,7 @@
 
 //declare map variable in global scope
 var laskaMap
+var minValue
 
 //function to instantiate the Leaflet Map
 function createMap() {
@@ -17,42 +18,98 @@ function createMap() {
 		maxZoom: 5
 	}).addTo(laskaMap);
   //call getData function
-  getData();
+  getData(laskaMap);
 };
 
-//function to attach popups to each of the features being mapped
-function onEachFeature(feature, layer) {
-  var popupContent = "";
-  if(feature.properties) {
-    for (var property in feature.properties) {
-      popupContent += "<p>" + property + ": " + feature.properties[property] + "</p>";
-    };
-    layer.bindPopup(popupContent);
-  };
+function calcMinValue(data) {
+  //create empty array to store all data values
+  var allValues =[];
+
+  //loop through each state
+  for (var state of data.features) {
+    //loop through each year
+    for (var year = 1990; year <= 2017; year+=1) {
+      //get million metric tons CO2 for current year
+      var value = state.properties["tons_"+ String(year)];
+      //add value to array
+      allValues.push(value);
+    }
+  }
+
+  //get minimum value of the array
+  var minValue = Math.min(...allValues)
+
+  console.log("Minimum value is: " + minValue);
+  return minValue;
 };
 
-//function to convert geojson points into stylized leaflet circle markers
-//probably going to be getting rid of/changing because need prop. symbols
+// function to calculate the radius of each prop symbol
+function calcPropRadius(attValue) {
+  //constant factor adjusts symbol sizes evenly
+  var minRadius=3
+
+  //flannary appearance compensation formula
+  var radius = 1.0083*Math.pow(attValue/minValue,0.5715)*minRadius
+
+  return radius
+};
+
 function pointToLayer(feature, latlng) {
-  var geojsonMarkerOptions = {
-    radius:5,
-    fillColor: "#42CA5A",
+  //Step 4: Determine which attribute to visualize with prop symbols
+  var attribute = "tons_2017";
+
+  //create marker options
+  var circleOptions = {
+    radius: 4,
+    fillColor: "#42CA5A", //000000 because CO2 dirty, so visualize in black?
 		color: "#000",
 		weight: 1,
 		opacity: 1,
 		fillOpacity: 0.6
   };
-  return L.circleMarker(latlng, geojsonMarkerOptions);
+
+  //Step 5. For each feature, determine its value for the selected attribute
+  var attValue = Number(feature.properties[attribute]);
+
+  //Step 6. Give each feature's circle marker a radius based on its attribute value
+  circleOptions.radius = calcPropRadius(attValue);
+
+  //create circle marker layer
+  var circleLayer = L.circleMarker(latlng, circleOptions);
+
+  //build popup content string
+  //var popupContent = "<p><b>State:</b> " + feature.properties.State + "</p><p><b>" + attribute + ":</b> " + feature.properties[attribute] + "</p>";
+
+  //customize popupContent
+  var popupContent = "<p><b>State:</b> " + feature.properties.State + "</p>";
+  var year = attribute.split("_")[1];
+  popupContent += "<p><b>CO2 Emissions in " + year + ":</b> " + feature.properties[attribute] + " million metric tons</p>";
+
+  //bind the popup to the circle marker
+  circleLayer.bindPopup(popupContent//, //the offset was displacing the popup based on where I clicked, it wasn;t just putting it at the top of the circle as the example made it seem
+    //{offset: new L.Point(0, circleOptions.radius)}
+  );
+
+  //return the circle marker layer to the L.geoJson pointToLayer function
+  return circleLayer;
+};
+
+//Step 3: Add circle markers for point features to the map
+function createPropSymbols(data) {
+  //create Leaflet geoJSON layer and add it to map
+  L.geoJson(data, {
+    pointToLayer: pointToLayer
+  }).addTo(laskaMap);
 };
 
 //function to retrieve the data and place it on the map
 function getData() {
+  //load the data
   $.getJSON("data/CO2_Emissions.geojson", function(response) {
-  //create a Leaflet GeoJSON layer and add it to the map
-    L.geoJson(response, {
-      onEachFeature: onEachFeature,
-      pointToLayer: pointToLayer
-    }).addTo(laskaMap);
+    //calculate the minimum data value
+    minValue=calcMinValue(response);
+    //call function to create proportional symbols
+    createPropSymbols(response)
   });
 };
 
