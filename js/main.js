@@ -54,9 +54,10 @@ function calcPropRadius(attValue) {
   return radius
 };
 
-function pointToLayer(feature, latlng) {
+//function to **********************************
+function pointToLayer(feature, latlng, attributes) {
   //Step 4: Determine which attribute to visualize with prop symbols
-  var attribute = "tons_2017";
+  var attribute = attributes[0];
 
   //create marker options
   var circleOptions = {
@@ -95,21 +96,130 @@ function pointToLayer(feature, latlng) {
 };
 
 //Step 3: Add circle markers for point features to the map
-function createPropSymbols(data) {
+function createPropSymbols(data, attributes) {
   //create Leaflet geoJSON layer and add it to map
   L.geoJson(data, {
-    pointToLayer: pointToLayer
+    pointToLayer: function(feature, latlng) {
+      return pointToLayer(feature, latlng, attributes);
+    }
   }).addTo(laskaMap);
 };
+
+//function to create sequence slider and buttons
+function createSequenceControls(attributes) {
+  //create range input element (slider)
+  $('#panel').append('<input class="range-slider" type="range">');
+
+  //set slider attributes
+  $('.range-slider').attr({
+    min:0,
+    max:27,
+    value:0,
+    step:1
+  });
+
+  //add the step buttons
+  $('#panel').append('<button class="step" id="reverse">Reverse</button>');
+  $('#panel').append('<button class="step" id="forward">Forward</button>');
+  //replace button content with images
+  $('#reverse').html('<img src="img/leftArrow.png">');
+  $('#forward').html('<img src="img/rightArrow.png">');
+
+  //click listener for buttons
+  $('.step').click(function() {
+    //get the old index value
+    var index = $('.range-slider').val();
+
+    //increment or decrement depending on button clicked
+    if ($(this).attr('id') == 'forward') {
+        index++;
+        //if past the last attribute, wrap around to first attribute
+        index = index > 27 ? 0 : index;
+    } else if ($(this).attr('id') == 'reverse') {
+        index--;
+        //if past the first attribute, wrap around to last attribute
+        index = index < 0 ? 27 : index;
+    };
+
+    //update slider
+    $('.range-slider').val(index);
+    //console.log(index)
+    //pass new attribute to update symbols
+    updatePropSymbols(attributes[index]);
+  });
+
+  //input listener for slider
+  $('.range-slider').on('input', function() {
+    //get the new index value
+    var index = $(this).val();
+    //console.log(index)
+    //pass new attribute to update symbols
+    updatePropSymbols(attributes[index]);
+  });
+}; //have to define attributes in here??
+
+//resizse the prop symbols according to new attribute values
+function updatePropSymbols(attribute) {
+  laskaMap.eachLayer(function(layer) {
+    if (layer.feature && layer.feature.properties[attribute]) {
+      //access feature properties
+      var props = layer.feature.properties;
+
+      //update each feature's radius based on new attribute values
+      var radius = calcPropRadius(props[attribute]);
+      layer.setRadius(radius);
+
+      //add state to popup content string
+      var popupContent = "<p><b>State: </b>" + props.State + "</p>";
+
+      //add formatted attribute to panel content string
+      var year = attribute.split("_")[1];
+      popupContent += "<p><b>CO2 Emissions in " + year + ": </b>" + props[attribute] + " million metric tons</p>";
+
+      //update popup content
+      popup=layer.getPopup();
+      popup.setContent(popupContent).update();
+    };
+  });
+};
+
+//function to build an attributes array from the response getData
+function processData(data) {
+  //create empty array to hold attributes
+  var attributes = [];
+
+  //properties of the first feature in the dataset
+  var properties = data.features[0].properties;
+
+  //push each attribute name into attributes array
+  for (var attribute in properties) {
+    //only take attributes with CO2 emissions allValues
+    if (attribute.indexOf("tons")>-1) {
+      attributes.push(attribute);
+    };
+  };
+
+  //check result
+  console.log(attributes);
+
+  return attributes;
+};
+
 
 //function to retrieve the data and place it on the map
 function getData() {
   //load the data
   $.getJSON("data/CO2_Emissions.geojson", function(response) {
+
+    //create an attributes array
+    var attributes = processData(response);
+
     //calculate the minimum data value
     minValue=calcMinValue(response);
+
     //call function to create proportional symbols
-    createPropSymbols(response)
+    createPropSymbols(response, attributes);
+    createSequenceControls(attributes);
   });
 };
 
