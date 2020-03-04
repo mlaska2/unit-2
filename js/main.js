@@ -199,7 +199,7 @@ function createPopupContent(properties, attribute) {
 
     //add formatted attribute to panel content string
     var year = attribute.split("_")[1];
-    popupContent += "<p><b>CO2 Emissions in " + year + ":</b> " + properties[attribute] + " million metric tons</p>";
+    popupContent += "<p><b>CO<sub>2</sub> Emissions in " + year + ":</b> " + properties[attribute] + " million metric tons</p>";
 
     return popupContent;
 };
@@ -222,7 +222,7 @@ function updatePropSymbols(attribute) {
             popup=layer.getPopup();
             popup.setContent(popupContent).update();
 
-            $('.years').html('CO2 Emissions in ' + attribute.split("_")[1])
+            $('.years').html('CO<sub>2</sub> Emissions in ' + attribute.split("_")[1])
         };
     });
 };
@@ -287,7 +287,7 @@ function createLegend(laskaMap, attributes) {
 
     //still have to figure out how to do this with the sequence   //HOW???????
     var year = attributes[0].split("_")[1]
-    content = '<b class = "years">CO2 Emissions in ' + year + '</b><br><b>(in million metric tons)</b>'
+    content = '<b class = "years">CO<sub>2</sub> Emissions in ' + year + '</b><br><b>(in million metric tons)</b>'
     $('#temporal-legend').append(content)
 
     //probably a sign I have to create a new function to update the legend
