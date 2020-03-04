@@ -8,7 +8,11 @@ var dataStats = {};
 function createMap() {
     laskaMap = L.map("mapid", {
         center: [39.83333, -98.58333],
-        zoom: 4
+        zoom: 4,
+        maxBounds: ([
+            [76, -179.999],
+            [0, -20]
+        ])
     });
     //add basemap tilelayer
     // L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -90,9 +94,7 @@ function pointToLayer(feature, latlng, attributes) {
     var popupContent = createPopupContent(feature.properties, attribute);
 
     //bind the popup to the circle marker
-    circleLayer.bindPopup(popupContent//, //the offset was displacing the popup based on where I clicked, it wasn;t just putting it at the top of the circle as the example made it seem
-      //{offset: new L.Point(0, circleOptions.radius)}
-    );
+    circleLayer.bindPopup(popupContent);
 
     //return the circle marker layer to the L.geoJson pointToLayer function
     return circleLayer;
@@ -227,125 +229,113 @@ function updatePropSymbols(attribute) {
 
 //work in progress
 function createLegend(laskaMap, attributes) {
-  var LegendControl = L.Control.extend({
-    options: {
-      position: 'bottomright'
-    },
+    var LegendControl = L.Control.extend({
+        options: {
+          position: 'bottomright'
+        },
 
-    onAdd: function(laskaMap) {
-      //create the control container with a particular class name
-      var container = L.DomUtil.create('div', 'legend-control-container');
+        onAdd: function(laskaMap) {
+            //create the control container with a particular class name
+            var container = L.DomUtil.create('div', 'legend-control-container');
 
-      //PUT SCRIPT TO CREATE TEMPORAL LEGEND here
+            //PUT SCRIPT TO CREATE TEMPORAL LEGEND here
 
-      //add temporal legend div to the container
-      $(container).append('<div id="temporal-legend">');
+            //add temporal legend div to the container
+            $(container).append('<div id="temporal-legend">');
 
-// //still have to figure out how to do this with the sequence   //HOW???????
-//       var year = attributes[0].split("_")[1]
-//       $(container).append('<p class = "years"><b>CO2 Emissions in ' + year + '</b></p>')
+            //Lesson 3 Step 1: add 'svg' element to the legend container
+            var svg = '<svg id="attribute-legend" width="150px" height="110px">';
 
-      //Lesson 3 Step 1: add 'svg' element to the legend container
-      var svg = '<svg id="attribute-legend" width="250px" height="110px">';
+            //create array of circle names to base loop on
+            var circlesArray = ['max','mean','min'];
 
-      //create array of circle names to base loop on
-      var circlesArray = ['max','mean','min'];
+            //Step 2: loop to add each circle and text to svg string
+            for (var i=0; i<circlesArray.length; i++) {
 
-      //Step 2: loop to add each circle and text to svg string
-      for (var i=0; i<circlesArray.length; i++) {
+                //Step 3: assign the radius and y position attributes
+                var radius = calcPropRadius(dataStats[circlesArray[i]]);
+                var cy = 109 - radius;
 
-        //Step 3: assign the radius and y position attributes
-        var radius = calcPropRadius(dataStats[circlesArray[i]]);
-        var cy = 109 - radius;
+                //create circle string
+                svg += '<circle class="legend-circle" id="' + circlesArray[i] +
+                '" r="' + radius + '" cy="' + cy +
+                '" fill="#848484" fill-opacity="0.6" stroke="#000000" cx="57"/>'; //#42CA5A
 
-        //create circle string
-        svg += '<circle class="legend-circle" id="' + circlesArray[i] +
-        '" r="' + radius + '" cy="' + cy +
-        '" fill="#848484" fill-opacity="0.6" stroke="#000000" cx="57"/>'; //#42CA5A
+                textYArray = [65,85,105]
+//just hardcode the textY here
+                //var textY = i*35+28
 
-        //evenly space out labels
-        // if (i=0) {
-        //   textY = 60
-        // } else if (i=1) {
-        //   textY = 90
-        // } else {
-        //   textY = 105
-        // }
+                //text string
+                svg += '<text id="' + circlesArray[i] + '"-text" x="115" y="' + textYArray[i] + '">' +
+                Math.round(dataStats[circlesArray[i]]*100)/100 + '</text>';
+            };
 
-        var textY = i*35+28
+            //close svg string
+            svg += "</svg>";
 
-        //text string
-        svg += '<text id="' + circlesArray[i] + '"-text" x="115" y="' + textY + '">' +
-        Math.round(dataStats[circlesArray[i]]*100)/100 + " million metric tons" + '</text>';
-      };
+            //add attribute-legend svg to the container
+            $(container).append(svg);
 
-      //close svg string
-      svg += "</svg>";
+            //disable mouse event listeners for the container
+            L.DomEvent.disableClickPropagation(container);
 
-      //add attribute-legend svg to the container
-      $(container).append(svg);
+            return container;
+        }
+    });
 
+    laskaMap.addControl(new LegendControl());
 
-      //disable mouse event listeners for the container
-      L.DomEvent.disableClickPropagation(container);
+    //still have to figure out how to do this with the sequence   //HOW???????
+    var year = attributes[0].split("_")[1]
+    content = '<b class = "years">CO2 Emissions in ' + year + '</b><br><b>(in million metric tons)</b>'
+    $('#temporal-legend').append(content)
 
-      return container;
-    }
-  });
-
-  laskaMap.addControl(new LegendControl());
-
-  //still have to figure out how to do this with the sequence   //HOW???????
-  var year = attributes[0].split("_")[1]
-  content = '<b class = "years">CO2 Emissions in ' + year + '</b><br><b>(in million metric tons)</b>'
-  $('#temporal-legend').append(content)
-
-//probably a sign I have to create a new function to update the legend
-  //updateLegend(laskaMap, attributes[0]);
+    //probably a sign I have to create a new function to update the legend
+      //updateLegend(laskaMap, attributes[0]);
 };
 
 //function to build an attributes array from the response getData
 function processData(data) {
-  //create empty array to hold attributes
-  var attributes = [];
+    //create empty array to hold attributes
+    var attributes = [];
 
-  //properties of the first feature in the dataset
-  var properties = data.features[0].properties;
+    //properties of the first feature in the dataset
+    var properties = data.features[0].properties;
 
-  //push each attribute name into attributes array
-  for (var attribute in properties) {
-    //only take attributes with CO2 emissions allValues
-    if (attribute.indexOf("tons")>-1) {
-      attributes.push(attribute);
+    //push each attribute name into attributes array
+    for (var attribute in properties) {
+        //only take attributes with CO2 emissions allValues
+        if (attribute.indexOf("tons")>-1) {
+            attributes.push(attribute);
+        };
     };
-  };
 
-  //check result
-  console.log(attributes);
+    //check result. dont need in final version
+    console.log(attributes);
 
-  return attributes;
+    return attributes;
 };
 
 //function to retrieve the data and place it on the map
 function getData() {
-  //load the data
-  $.getJSON("data/CO2_Emissions.geojson", function(response) {
+    //load the data
+    $.getJSON("data/CO2_Emissions.geojson", function(response) {
 
-    //create an attributes array
-    var attributes = processData(response);
+        //create an attributes array
+        var attributes = processData(response);
 
-    //call function to calculate statistics
-    calcStats(response);
+        //call function to calculate statistics
+        calcStats(response);
 
-    //call function to create proportional symbols
-    createPropSymbols(response, attributes);
+        //call function to create proportional symbols
+        createPropSymbols(response, attributes);
 
-    //
-    createSequenceControls(attributes);
+        //
+        createSequenceControls(attributes);
 
-    //
-    createLegend(laskaMap, attributes);
-  });
+        //
+        createLegend(laskaMap, attributes);
+    });
 };
 
 //perform createMap function when the document is ready
