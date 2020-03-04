@@ -1,29 +1,40 @@
 #mapid {
-  height: 600px;
-  width: 75%;
+  height: 500px;
+  width: 100%;
   display: inline-block;
  }
 
- #panel {
+ /* #panel {
    width: 20%;
    padding: 20px;
    display: inline-block;
    vertical-align: top;
    text-align: center;
    line-height: 42px;
- }
+ } */
 
- .range-slider {
-   width: 55%;
- }
+.sequence-control-container {
+  width: 270px;
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 10px;
+  line-height: 45px;
+  text-align: center;
+  border: solid gray 1px;
+}
 
- .step {
-   width: 20%;
- }
+.range-slider {
+   width: 150px;
+}
 
- .step img {
+.step {
+   width: 40px;
+}
+
+.step img {
    width: 100%;
- }
+   height: auto;
+}
 
 #forward {
   float: right;
@@ -31,6 +42,22 @@
 
 #reverse {
   float: left;
+}
+
+.legend-control-container {
+  width: 260px;
+  height: 160px;
+  background-color: rgba(255, 255, 255, 0.5);
+  line-height: normal;
+  text-align: center;
+  border: solid gray 1px;
+}
+
+#temporal-legend {
+  height: 30px;
+  width: 250px;
+  text-align: center;
+  padding-top: 10px
 }
 
 .leaflet-popup-content p {
