@@ -1,9 +1,8 @@
 //Start of Leaflet Lab #1, Matthew Laska, G575 Spring 2020
-//very similar code to the other 3, don't think alot of commenting on the various things is necessary
 
-//declare map variable in global scope
-var laskaMap
-var minValue
+//declare variables we want to access from multiple locations
+var laskaMap;
+var dataStats = {};
 
 //function to instantiate the Leaflet Map
 function createMap() {
@@ -12,16 +11,21 @@ function createMap() {
     zoom: 4
   });
   //add basemap tilelayer
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-		attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-		subdomains: 'abcd',
-		maxZoom: 5
+  // L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+	// 	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+	// 	subdomains: 'abcd',
+	// 	maxZoom: 5
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+	  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+	  subdomains: 'abcd',
+	  maxZoom: 5
 	}).addTo(laskaMap);
   //call getData function
   getData(laskaMap);
 };
 
-function calcMinValue(data) {
+//function to calculate max, min, and mean of the dataset from an array of all the values and assign them to the dataStats object
+function calcStats(data) {
   //create empty array to store all data values
   var allValues =[];
 
@@ -36,11 +40,13 @@ function calcMinValue(data) {
     }
   }
 
-  //get minimum value of the array
-  var minValue = Math.min(...allValues)
+  //get min, max, and mean stats for the array
+  dataStats.min = Math.min(...allValues);
+  dataStats.max = Math.max(...allValues);
 
-  console.log("Minimum value is: " + minValue);
-  return minValue;
+  //calculate mean
+  var sum = allValues.reduce(function(a,b){return a+b;});
+  dataStats.mean = sum/allValues.length;
 };
 
 // function to calculate the radius of each prop symbol
@@ -49,7 +55,7 @@ function calcPropRadius(attValue) {
   var minRadius=3
 
   //flannary appearance compensation formula
-  var radius = 1.0083*Math.pow(attValue/minValue,0.5715)*minRadius
+  var radius = 1.0083*Math.pow(attValue/dataStats.min,0.5715)*minRadius
 
   return radius
 };
@@ -62,7 +68,7 @@ function pointToLayer(feature, latlng, attributes) {
   //create marker options
   var circleOptions = {
     radius: 4,
-    fillColor: "#42CA5A", //000000 because CO2 dirty, so visualize in black?
+    fillColor: "#848484", //000000 because CO2 dirty, so visualize in black?
 		color: "#000",
 		weight: 1,
 		opacity: 1,
@@ -78,13 +84,8 @@ function pointToLayer(feature, latlng, attributes) {
   //create circle marker layer
   var circleLayer = L.circleMarker(latlng, circleOptions);
 
-  //build popup content string
-  //var popupContent = "<p><b>State:</b> " + feature.properties.State + "</p><p><b>" + attribute + ":</b> " + feature.properties[attribute] + "</p>";
-
-  //customize popupContent
-  var popupContent = "<p><b>State:</b> " + feature.properties.State + "</p>";
-  var year = attribute.split("_")[1];
-  popupContent += "<p><b>CO2 Emissions in " + year + ":</b> " + feature.properties[attribute] + " million metric tons</p>";
+  //assign popupContent to the function that creates popup
+  var popupContent = createPopupContent(feature.properties, attribute);
 
   //bind the popup to the circle marker
   circleLayer.bindPopup(popupContent//, //the offset was displacing the popup based on where I clicked, it wasn;t just putting it at the top of the circle as the example made it seem
@@ -107,8 +108,38 @@ function createPropSymbols(data, attributes) {
 
 //function to create sequence slider and buttons
 function createSequenceControls(attributes) {
-  //create range input element (slider)
-  $('#panel').append('<input class="range-slider" type="range">');
+
+  //create new sequence controls
+  var SequenceControl = L.Control.extend({
+    options: {
+      position: 'bottomleft'
+    },
+
+    //onAdd method specifying a function to create DOM element, executed when control is added to the map
+    onAdd: function () {
+      //create control container div with a specified class name
+      var container = L.DomUtil.create('div', 'sequence-control-container');
+
+      //intitalize other DOM elements if needed here
+
+      //create range input element (slider)
+      $(container).append('<input class="range-slider" type="range">');
+
+      //create step buttons
+      $(container).append('<button class="step" id="reverse" title="Reverse">Reverse</button>');
+      $(container).append('<button class="step" id="forward" title="Forward">Forward</button>');
+
+      //disable mouse event listeners for the container
+      L.DomEvent.disableClickPropagation(container);
+
+      return container;
+    }
+  });
+
+  //add given control to the map
+  laskaMap.addControl(new SequenceControl());
+
+  //NOW can set attributes/edit things within the control
 
   //set slider attributes
   $('.range-slider').attr({
@@ -118,9 +149,6 @@ function createSequenceControls(attributes) {
     step:1
   });
 
-  //add the step buttons
-  $('#panel').append('<button class="step" id="reverse">Reverse</button>');
-  $('#panel').append('<button class="step" id="forward">Forward</button>');
   //replace button content with images
   $('#reverse').html('<img src="img/leftArrow.png">');
   $('#forward').html('<img src="img/rightArrow.png">');
@@ -156,7 +184,19 @@ function createSequenceControls(attributes) {
     //pass new attribute to update symbols
     updatePropSymbols(attributes[index]);
   });
-}; //have to define attributes in here??
+};
+
+//function to create popup and eliminate redundancies in other functions
+function createPopupContent(properties, attribute) {
+  //add city to popup content string
+  var popupContent = "<p><b>State:</b> " + properties.State + "</p>";
+
+  //add formatted attribute to panel content string
+  var year = attribute.split("_")[1];
+  popupContent += "<p><b>CO2 Emissions in " + year + ":</b> " + properties[attribute] + " million metric tons</p>";
+
+  return popupContent;
+};
 
 //resizse the prop symbols according to new attribute values
 function updatePropSymbols(attribute) {
@@ -169,18 +209,95 @@ function updatePropSymbols(attribute) {
       var radius = calcPropRadius(props[attribute]);
       layer.setRadius(radius);
 
-      //add state to popup content string
-      var popupContent = "<p><b>State: </b>" + props.State + "</p>";
-
-      //add formatted attribute to panel content string
-      var year = attribute.split("_")[1];
-      popupContent += "<p><b>CO2 Emissions in " + year + ": </b>" + props[attribute] + " million metric tons</p>";
+      //assign popupContent to the function that creates popup
+      var popupContent = createPopupContent(props, attribute);
 
       //update popup content
       popup=layer.getPopup();
       popup.setContent(popupContent).update();
+
+      $('.years').html('CO2 Emissions in ' + attribute.split("_")[1])
     };
   });
+};
+
+//work in progress
+function createLegend(laskaMap, attributes) {
+  var LegendControl = L.Control.extend({
+    options: {
+      position: 'bottomright'
+    },
+
+    onAdd: function(laskaMap) {
+      //create the control container with a particular class name
+      var container = L.DomUtil.create('div', 'legend-control-container');
+
+      //PUT SCRIPT TO CREATE TEMPORAL LEGEND here
+
+      //add temporal legend div to the container
+      $(container).append('<div id="temporal-legend">');
+
+// //still have to figure out how to do this with the sequence   //HOW???????
+//       var year = attributes[0].split("_")[1]
+//       $(container).append('<p class = "years"><b>CO2 Emissions in ' + year + '</b></p>')
+
+      //Lesson 3 Step 1: add 'svg' element to the legend container
+      var svg = '<svg id="attribute-legend" width="250px" height="110px">';
+
+      //create array of circle names to base loop on
+      var circlesArray = ['max','mean','min'];
+
+      //Step 2: loop to add each circle and text to svg string
+      for (var i=0; i<circlesArray.length; i++) {
+
+        //Step 3: assign the radius and y position attributes
+        var radius = calcPropRadius(dataStats[circlesArray[i]]);
+        var cy = 109 - radius;
+
+        //create circle string
+        svg += '<circle class="legend-circle" id="' + circlesArray[i] +
+        '" r="' + radius + '" cy="' + cy +
+        '" fill="#848484" fill-opacity="0.6" stroke="#000000" cx="57"/>'; //#42CA5A
+
+        //evenly space out labels
+        // if (i=0) {
+        //   textY = 60
+        // } else if (i=1) {
+        //   textY = 90
+        // } else {
+        //   textY = 105
+        // }
+
+        var textY = i*35+28
+
+        //text string
+        svg += '<text id="' + circlesArray[i] + '"-text" x="115" y="' + textY + '">' +
+        Math.round(dataStats[circlesArray[i]]*100)/100 + " million metric tons" + '</text>';
+      };
+
+      //close svg string
+      svg += "</svg>";
+
+      //add attribute-legend svg to the container
+      $(container).append(svg);
+
+
+      //disable mouse event listeners for the container
+      L.DomEvent.disableClickPropagation(container);
+
+      return container;
+    }
+  });
+
+  laskaMap.addControl(new LegendControl());
+
+  //still have to figure out how to do this with the sequence   //HOW???????
+  var year = attributes[0].split("_")[1]
+  content = '<b class = "years">CO2 Emissions in ' + year + '</b><br><b>(in million metric tons)</b>'
+  $('#temporal-legend').append(content)
+
+//probably a sign I have to create a new function to update the legend
+  //updateLegend(laskaMap, attributes[0]);
 };
 
 //function to build an attributes array from the response getData
@@ -205,7 +322,6 @@ function processData(data) {
   return attributes;
 };
 
-
 //function to retrieve the data and place it on the map
 function getData() {
   //load the data
@@ -214,12 +330,17 @@ function getData() {
     //create an attributes array
     var attributes = processData(response);
 
-    //calculate the minimum data value
-    minValue=calcMinValue(response);
+    //call function to calculate statistics
+    calcStats(response);
 
     //call function to create proportional symbols
     createPropSymbols(response, attributes);
+
+    //
     createSequenceControls(attributes);
+
+    //
+    createLegend(laskaMap, attributes);
   });
 };
 
