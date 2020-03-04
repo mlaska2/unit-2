@@ -1,22 +1,22 @@
 #mapid {
     height: 500px;
-    width: 100%;
+    width: 80%;
     display: inline-block;
  }
 
- /* #panel {
-     width: 20%;
-     padding: 20px;
+ #panel {
+     width: 18%;
+     height: 500px;
      display: inline-block;
      vertical-align: top;
      text-align: center;
      line-height: 42px;
- } */
+ }
 
 .sequence-control-container {
     width: 270px;
     height: 30px;
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.9);
     padding: 10px;
     line-height: 45px;
     text-align: center;
@@ -47,7 +47,7 @@
 .legend-control-container {
     width: 160px;
     height: 160px;
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, .9);
     line-height: normal;
     text-align: center;
     border: solid gray 1px;
