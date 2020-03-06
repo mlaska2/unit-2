@@ -14,16 +14,13 @@ function createMap() {
             [0, -20]
         ])
     });
-    //add basemap tilelayer
-    // L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  	// 	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  	// 	subdomains: 'abcd',
-  	// 	maxZoom: 5
 
+    //
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     	  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     	  subdomains: 'abcd',
-    	  maxZoom: 5
+    	  maxZoom: 5,
+        minZoom: 3
   	}).addTo(laskaMap);
 
     //call getData function
@@ -66,6 +63,9 @@ function calcPropRadius(attValue) {
     return radius
 };
 
+//filter
+var circleLayers = []
+
 //function to **********************************
 function pointToLayer(feature, latlng, attributes) {
     //Step 4: Determine which attribute to visualize with prop symbols
@@ -96,6 +96,9 @@ function pointToLayer(feature, latlng, attributes) {
     //bind the popup to the circle marker
     circleLayer.bindPopup(popupContent);
 
+//filter
+    circleLayers[feature.properties["State"]]=circleLayer
+
     //return the circle marker layer to the L.geoJson pointToLayer function
     return circleLayer;
 };
@@ -108,6 +111,19 @@ function createPropSymbols(data, attributes) {
             return pointToLayer(feature, latlng, attributes);
         }
     }).addTo(laskaMap);
+};
+
+function updateFilter(map, attribute, lowerLimitNumber, upperLimitNumber) {
+    for (layer in circleLayers) {
+        if (circleLayers[layer].feature && circleLayers[layer].feature.properties[attribute]) {
+            if (circleLayers[layer].feature.properties[attribute] >= lowerLimitNumber && circleLayers[layer].feature.properties[attribute] <= upperLimitNumber) {
+                laskaMap.addLayer(circleLayers[layer]);
+                updatePropSymbols(laskaMap, attribute)
+            } else {
+                laskaMap.removeLayer(circleLayers[layer]);
+            };
+        };
+    };
 };
 
 //function to create sequence slider and buttons
@@ -132,6 +148,12 @@ function createSequenceControls(attributes) {
             //create step buttons
             $(container).append('<button class="step" id="reverse" title="Reverse">Reverse</button>');
             $(container).append('<button class="step" id="forward" title="Forward">Forward</button>');
+
+//filter
+            $(container).append('<span id = "lowerLimitNumber">')
+            $(container).append('<input class="lowerLimitSlider" type = "range">');
+            $(container).append('<input class="upperLimitSlider" type = "range">');
+            $(container).append('<span id = "upperLimitNumber">')
 
             //disable mouse event listeners for the container
             L.DomEvent.disableClickPropagation(container);
@@ -175,6 +197,9 @@ function createSequenceControls(attributes) {
 
         //update slider
         $('.range-slider').val(index);
+//filter
+        updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
+
 
         //pass new attribute to update symbols
         updatePropSymbols(attributes[index]);
@@ -185,11 +210,41 @@ function createSequenceControls(attributes) {
         //get the new index value
         var index = $(this).val();
 
-        //console.log(index)
+//filter
+        updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
 
         //pass new attribute to update symbols
         updatePropSymbols(attributes[index]);
     });
+
+//filter
+    $('.lowerLimitSlider').attr({
+        min: 5,
+        max: 718,
+        value: 5,
+        step: 1
+    });
+
+    $('.upperLimitSlider').attr({
+        min: 5,
+        max: 718,
+        value: 718,
+        step: 1
+    });
+
+    $('#lowerLimitNumber').html($('lowerLimitSlider').val());
+    $('#upperLimitNumber').html($('upperLimitSlider').val());
+
+    $('.lowerLimitSlider').on('input', function() {
+        updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
+        $('#lowerLimitNumber').html($('.lowerLimitSlider').val());
+    });
+
+    $('.upperLimitSlider').on('input', function() {
+        updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
+        $('#upperLimitNumber').html($('.upperLimitSlider').val());
+    });
+
 };
 
 //function to create popup and eliminate redundancies in other functions
