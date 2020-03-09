@@ -1,16 +1,15 @@
-#intro {
-    height: 70px;
+h1.title {
+    /* height: 60px; */
+    text-align: center;
 }
 
-h1#title {
-    height: 20px
+h4.subtitle {
+    /* height: 20px; */
+    text-align: center;
 }
-/* the two above are kind of just makeshift
- to make the intro not so spread out, don't
- know how to actually condense it properly */
 
 #mapid {
-    height: 500px;
+    height: 600px;
     width: 75%;
     display: inline-block;
  }
@@ -68,7 +67,7 @@ h1#title {
 
 #panel {
    width: 24%;
-   height: 510px;
+   height: 610px;
    display: inline-block;
    vertical-align: top;
    position: relative;
@@ -80,6 +79,10 @@ img {
     display: block;
     margin-left: auto;
     margin-right: auto;
+}
+
+.picCredits {
+    line-height: 0px;
 }
 
 p.credits {
