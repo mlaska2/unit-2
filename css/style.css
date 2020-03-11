@@ -1,10 +1,4 @@
-h1.title {
-    /* height: 60px; */
-    text-align: center;
-}
-
-h4.subtitle {
-    /* height: 20px; */
+.title {
     text-align: center;
 }
 
@@ -74,15 +68,11 @@ h4.subtitle {
 }
 
 img {
-    width: 300px;
-    height: 200px;
+    width: 95%;
+    height: 95%;
     display: block;
     margin-left: auto;
     margin-right: auto;
-}
-
-.picCredits {
-    line-height: 0px;
 }
 
 p.credits {

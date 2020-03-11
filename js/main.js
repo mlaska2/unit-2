@@ -1,4 +1,4 @@
-//Start of Leaflet Lab #1, Matthew Laska, G575 Spring 2020
+//Leaflet Lab #1, Matthew Laska, G575 Spring 2020
 
 //declare variables we want to access from multiple locations
 var laskaMap;
@@ -15,7 +15,7 @@ function createMap() {
         ])
     });
 
-    //
+    //creating basemap tilelayer and adding to map
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     	  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     	  subdomains: 'abcd',
@@ -38,16 +38,16 @@ function calcStats(data) {
         for (var year = 1990; year <= 2017; year+=1) {
             //get million metric tons CO2 for current year
             var value = state.properties["tons_"+ String(year)];
-            //add value to array
+            //add the value to the array
             allValues.push(value);
         }
     }
 
-    //get min, max, and mean stats for the array
+    //get min, max stats for the array and add to dataStats object
     dataStats.min = Math.min(...allValues);
     dataStats.max = Math.max(...allValues);
 
-    //calculate mean
+    //calculate mean and add it to dataStats object
     var sum = allValues.reduce(function(a,b){return a+b;});
     dataStats.mean = sum/allValues.length;
 };
@@ -55,6 +55,7 @@ function calcStats(data) {
 // function to calculate the radius of each prop symbol
 function calcPropRadius(attValue) {
     //constant factor adjusts symbol sizes evenly
+    //chose 3 because any bigger makes map reading difficult
     var minRadius=3
 
     //flannary appearance compensation formula
@@ -63,47 +64,47 @@ function calcPropRadius(attValue) {
     return radius
 };
 
-//filter
+//create global variable to put point layers from each state for filter
 var circleLayers = []
 
-//function to **********************************
+//function to convert point markers to circles
 function pointToLayer(feature, latlng, attributes) {
-    //Step 4: Determine which attribute to visualize with prop symbols
+    //Determine which attribute to visualize with prop symbols
     var attribute = attributes[0];
 
-    //create marker options
+    //create default marker options for the circles
     var circleOptions = {
         radius: 4,
         fillColor: "#848484", //000000 because CO2 dirty, so visualize in black?
-    		color: "#000",
-    		weight: 1,
-    		opacity: 1,
-    		fillOpacity: 0.6
+    	color: "#000",
+    	weight: 1,
+    	opacity: 1,
+    	fillOpacity: 0.6
     };
 
-    //Step 5. For each feature, determine its value for the selected attribute
+    //For each feature, get the value for the selected attribute in number form
     var attValue = Number(feature.properties[attribute]);
 
-    //Step 6. Give each feature's circle marker a radius based on its attribute value
+    //Give each feature's circle marker a radius based on its attribute value
     circleOptions.radius = calcPropRadius(attValue);
 
     //create circle marker layer
     var circleLayer = L.circleMarker(latlng, circleOptions);
 
-    //assign popupContent to the function that creates popup
+    //assign popupContent to the function that creates popups
     var popupContent = createPopupContent(feature.properties, attribute);
 
-    //bind the popup to the circle marker
+    //bind the popup object to the circle marker layer
     circleLayer.bindPopup(popupContent);
 
-//filter
+    //save the circle layers using State as reference for the filter
     circleLayers[feature.properties["State"]]=circleLayer
 
     //return the circle marker layer to the L.geoJson pointToLayer function
     return circleLayer;
 };
 
-//Step 3: Add circle markers for point features to the map
+//Add circle markers for point features to the map
 function createPropSymbols(data, attributes) {
     //create Leaflet geoJSON layer and add it to map
     L.geoJson(data, {
@@ -113,13 +114,20 @@ function createPropSymbols(data, attributes) {
     }).addTo(laskaMap);
 };
 
+//function to update the filter
 function updateFilter(map, attribute, lowerLimitNumber, upperLimitNumber) {
     for (layer in circleLayers) {
+
+        //check if the layer has features and properties
         if (circleLayers[layer].feature && circleLayers[layer].feature.properties[attribute]) {
+
+            //check if the circlelayer is within the upper and lower limits specified by the filter
             if (circleLayers[layer].feature.properties[attribute] >= lowerLimitNumber && circleLayers[layer].feature.properties[attribute] <= upperLimitNumber) {
+                //add the circles to the map that meet this condition
                 laskaMap.addLayer(circleLayers[layer]);
                 updatePropSymbols(laskaMap, attribute)
             } else {
+                //remove the circle layers that dont meet the condition
                 laskaMap.removeLayer(circleLayers[layer]);
             };
         };
@@ -135,21 +143,19 @@ function createSequenceControls(attributes) {
             position: 'bottomleft'
         },
 
-        //onAdd method specifying a function to create DOM element, executed when control is added to the map
+        //onAdd method specifying a function to create DOM element, executed when the control is added to the map
         onAdd: function () {
             //create control container div with a specified class name
             var container = L.DomUtil.create('div', 'sequence-control-container');
 
-            //intitalize other DOM elements if needed here
-
-            //create range input element (slider)
+            //create range input element (slider) for sequencing
             $(container).append('<input class="range-slider" type="range">');
 
-            //create step buttons
+            //create step buttons for sequence
             $(container).append('<button class="step" id="reverse" title="Reverse">Reverse</button>');
             $(container).append('<button class="step" id="forward" title="Forward">Forward</button>');
 
-//filter
+            //create filter sliders and area to display the filter limits
             $(container).append('<span id = "lowerLimitNumber">')
             $(container).append('<input class="lowerLimitSlider" type = "range">');
             $(container).append('<input class="upperLimitSlider" type = "range">');
@@ -197,9 +203,9 @@ function createSequenceControls(attributes) {
 
         //update slider
         $('.range-slider').val(index);
-//filter
-        updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
 
+        //update the layer to filter based on currently specified limits
+        updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
 
         //pass new attribute to update symbols
         updatePropSymbols(attributes[index]);
@@ -210,14 +216,14 @@ function createSequenceControls(attributes) {
         //get the new index value
         var index = $(this).val();
 
-//filter
+        //update the layer to filter based on currently specified limits
         updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
 
         //pass new attribute to update symbols
         updatePropSymbols(attributes[index]);
     });
 
-//filter
+    //set attributes of upper and lower limit sliders for filter
     $('.lowerLimitSlider').attr({
         min: 5,
         max: 718,
@@ -232,16 +238,22 @@ function createSequenceControls(attributes) {
         step: 1
     });
 
-    $('#lowerLimitNumber').html($('lowerLimitSlider').val());
-    $('#upperLimitNumber').html($('upperLimitSlider').val());
+    // add text to display start limits for filter
+    $('#lowerLimitNumber').html(5);
+    $('#upperLimitNumber').html(718);
 
+    //add input listener for upper and lower filters
     $('.lowerLimitSlider').on('input', function() {
+        //update the circle layers based on the given input
         updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
+        //change the text display of the current limit value accordingly
         $('#lowerLimitNumber').html($('.lowerLimitSlider').val());
     });
 
     $('.upperLimitSlider').on('input', function() {
+        //update the circle layers based on the given input
         updateFilter(laskaMap, attributes[$('.range-slider').val()], $('.lowerLimitSlider').val(), $('.upperLimitSlider').val());
+        //change the text display of the current limit value accordingly
         $('#upperLimitNumber').html($('.upperLimitSlider').val());
     });
 
@@ -249,7 +261,7 @@ function createSequenceControls(attributes) {
 
 //function to create popup and eliminate redundancies in other functions
 function createPopupContent(properties, attribute) {
-    //add city to popup content string
+    //add State to popup content string
     var popupContent = "<p><b>State:</b> " + properties.State + "</p>";
 
     //add formatted attribute to panel content string
@@ -273,16 +285,17 @@ function updatePropSymbols(attribute) {
             //assign popupContent to the function that creates popup
             var popupContent = createPopupContent(props, attribute);
 
-            //update popup content
+            //update popup content with new info
             popup=layer.getPopup();
             popup.setContent(popupContent).update();
 
+            //replace year in temporal legend with updated year
             $('.years').html('CO<sub>2</sub> Emissions in ' + attribute.split("_")[1])
         };
     });
 };
 
-//work in progress
+//function to create and populate temporal/attribute legend
 function createLegend(laskaMap, attributes) {
     var LegendControl = L.Control.extend({
         options: {
@@ -293,21 +306,19 @@ function createLegend(laskaMap, attributes) {
             //create the control container with a particular class name
             var container = L.DomUtil.create('div', 'legend-control-container');
 
-            //PUT SCRIPT TO CREATE TEMPORAL LEGEND here
-
             //add temporal legend div to the container
             $(container).append('<div id="temporal-legend">');
 
-            //Lesson 3 Step 1: add 'svg' element to the legend container
+            //create svg string element for the attribute legend container
             var svg = '<svg id="attribute-legend" width="150px" height="110px">';
 
-            //create array of circle names to base loop on
+            //create array of circle names to base loop on for legend
             var circlesArray = ['max','mean','min'];
 
-            //Step 2: loop to add each circle and text to svg string
+            //loop to add each circle and text to svg string
             for (var i=0; i<circlesArray.length; i++) {
 
-                //Step 3: assign the radius and y position attributes
+                //assign the radius and y position attributes of svg circles
                 var radius = calcPropRadius(dataStats[circlesArray[i]]);
                 var cy = 109 - radius;
 
@@ -316,9 +327,8 @@ function createLegend(laskaMap, attributes) {
                 '" r="' + radius + '" cy="' + cy +
                 '" fill="#848484" fill-opacity="0.6" stroke="#000000" cx="57"/>'; //#42CA5A
 
+                //set y position of attribute legend text
                 textYArray = [65,85,105]
-//just hardcode the textY here
-                //var textY = i*35+28
 
                 //text string
                 svg += '<text id="' + circlesArray[i] + '"-text" x="115" y="' + textYArray[i] + '">' +
@@ -340,18 +350,15 @@ function createLegend(laskaMap, attributes) {
 
     laskaMap.addControl(new LegendControl());
 
-    //still have to figure out how to do this with the sequence   //HOW???????
+    //add temporal legend content to the div in the container
     var year = attributes[0].split("_")[1]
     content = '<b class = "years">CO<sub>2</sub> Emissions in ' + year + '</b><br><b>(in million metric tons)</b>'
     $('#temporal-legend').append(content)
-
-    //probably a sign I have to create a new function to update the legend
-      //updateLegend(laskaMap, attributes[0]);
 };
 
 //function to build an attributes array from the response getData
 function processData(data) {
-    //create empty array to hold attributes
+    //create empty array to hold attributes ('tons_1990', 'tons_1991', etc.)
     var attributes = [];
 
     //properties of the first feature in the dataset
@@ -365,7 +372,7 @@ function processData(data) {
         };
     };
 
-    //check result. dont need in final version
+    //check result
     console.log(attributes);
 
     return attributes;
@@ -385,10 +392,10 @@ function getData() {
         //call function to create proportional symbols
         createPropSymbols(response, attributes);
 
-        //
+        //call function to create controls
         createSequenceControls(attributes);
 
-        //
+        //call function to create legend
         createLegend(laskaMap, attributes);
     });
 };
